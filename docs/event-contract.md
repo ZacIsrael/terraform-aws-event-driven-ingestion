@@ -238,6 +238,18 @@ DynamoDB conditional writes are used by the ingestion application to prevent dup
 
 This is necessary because components in an event-driven architecture, including Amazon SQS, can provide at-least-once delivery behavior.
 
+## Retry Behavior
+
+The ingestion Lambda processes messages from the SQS ingestion queue through a Lambda event source mapping.
+
+When a message is processed successfully, the Lambda event source mapping deletes the message from the source queue.
+
+If processing fails, the message is not deleted. After the SQS visibility timeout expires, the message becomes visible in the ingestion queue and is eligible to be received and processed again.
+
+The ingestion queue uses a redrive policy with `maxReceiveCount = 5`. A message may therefore be received from the source queue up to five times: one initial processing attempt and up to four retry attempts.
+
+After five unsuccessful receives, SQS redrives the message from the ingestion queue to the configured dead-letter queue (DLQ) rather than continuing normal processing attempts.
+
 ## Logging Requirements
 
 Application logs must never contain the complete event payload.
