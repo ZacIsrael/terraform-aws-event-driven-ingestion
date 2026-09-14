@@ -250,6 +250,45 @@ The ingestion queue uses a redrive policy with `maxReceiveCount = 5`. A message 
 
 After five unsuccessful receives, SQS redrives the message from the ingestion queue to the configured dead-letter queue (DLQ) rather than continuing normal processing attempts.
 
+## Partial-Batch Behavior
+
+The ingestion Lambda processes messages from the SQS ingestion queue in batches.
+
+Partial-batch failure handling is enabled so that a failure affecting one message does not require successfully processed messages in the same batch to be retried.
+
+When individual messages fail processing, the Lambda function reports those messages as batch item failures. Successfully processed messages are treated as complete, while only the failed messages are returned to the ingestion queue for retry.
+
+This behavior reduces unnecessary duplicate processing while preserving SQS retry behavior for messages that could not be processed successfully.
+
+An unexpected failure that prevents the Lambda function from correctly processing or reporting the batch is treated as a batch-level invocation failure and must be observable through monitoring and alarms.
+
+## DLQ Behavior
+
+The SQS ingestion queue is configured with a dead-letter queue (DLQ) to isolate messages that repeatedly fail processing.
+
+The ingestion queue uses a redrive policy with `maxReceiveCount = 5`. A failed message may therefore be received from the source queue up to five times before it is redriven to the DLQ.
+
+Messages placed in the DLQ are not treated as successfully processed events. They are retained for investigation and troubleshooting rather than being continuously retried through the normal ingestion path.
+
+Examples of messages that may eventually reach the DLQ include malformed JSON, events that fail schema validation, references to missing S3 objects, and messages affected by failures that persist across all permitted processing attempts.
+
+The DLQ provides an operational boundary for poison messages and persistent failures so that they do not continuously interfere with normal ingestion processing.
+
+## Failure Classification
+
+The ingestion handler distinguishes between the following processing outcomes and failure categories:
+
+| Category | Behavior |
+| --- | --- |
+| Valid new event | The event is conditionally stored in DynamoDB and processing succeeds. |
+| Duplicate event | The existing record is not overwritten. The duplicate is treated as a successful no-op. |
+| Malformed JSON or invalid schema | The message fails processing and is eligible for retry. If the failure persists through the configured receive limit, the message is eventually redriven to the DLQ. |
+| Missing S3 object | The message fails processing. |
+| Transient AWS SDK failure | The message fails processing and is returned to the ingestion queue for retry. |
+| Unexpected batch-level failure | The Lambda invocation fails and the failure must be observable through monitoring and an alarm. |
+
+A valid new event and a duplicate event are both successful processing outcomes. The remaining categories represent failures that require retry handling, DLQ handling, or operational visibility depending on the nature and persistence of the failure.
+
 ## Logging Requirements
 
 Application logs must never contain the complete event payload.
