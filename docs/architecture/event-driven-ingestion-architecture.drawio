@@ -1,0 +1,118 @@
+<mxfile host="app.diagrams.net" modified="2026-09-14T00:00:00.000Z" agent="Claude" version="24.0.0" type="device">
+  <diagram name="Ingestion Pipeline" id="ingestion-pipeline">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== Primary flow (left to right) ===== -->
+
+        <!-- Authorized producer -->
+        <mxCell id="producer" value="Authorized producer" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.user;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="78" height="78" as="geometry" />
+        </mxCell>
+
+        <!-- Private S3 bucket -->
+        <mxCell id="s3_bucket" value="Private S3 bucket&lt;br&gt;Versioning + lifecycle" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#60A337;gradientDirection=north;fillColor=#277116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" vertex="1" parent="1">
+          <mxGeometry x="300" y="240" width="78" height="78" as="geometry" />
+        </mxCell>
+
+        <!-- EventBridge rule -->
+        <mxCell id="eventbridge" value="EventBridge rule" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F54749;gradientDirection=north;fillColor=#BC1356;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eventbridge;" vertex="1" parent="1">
+          <mxGeometry x="560" y="240" width="78" height="78" as="geometry" />
+        </mxCell>
+
+        <!-- SQS ingestion queue -->
+        <mxCell id="sqs_queue" value="SQS ingestion queue" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F54749;gradientDirection=north;fillColor=#BC1356;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sqs;" vertex="1" parent="1">
+          <mxGeometry x="820" y="240" width="78" height="78" as="geometry" />
+        </mxCell>
+
+        <!-- Ingestion Lambda -->
+        <mxCell id="lambda" value="Ingestion Lambda" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="240" width="78" height="78" as="geometry" />
+        </mxCell>
+
+        <!-- DynamoDB -->
+        <mxCell id="dynamodb" value="DynamoDB on-demand&lt;br&gt;TTL + idempotency" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#4D72F3;gradientDirection=north;fillColor=#3334B9;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="240" width="78" height="78" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Supporting branches ===== -->
+
+        <!-- SQS DLQ (failure path, below SQS ingestion queue) -->
+        <mxCell id="sqs_dlq" value="SQS DLQ" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F54749;gradientDirection=north;fillColor=#BC1356;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sqs;" vertex="1" parent="1">
+          <mxGeometry x="820" y="460" width="78" height="78" as="geometry" />
+        </mxCell>
+
+        <!-- CloudWatch Logs (application/runtime logging, below Lambda) -->
+        <mxCell id="cw_logs" value="CloudWatch Logs" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F54749;gradientDirection=north;fillColor=#BC1356;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudwatch_logs;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="460" width="78" height="78" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Observability tier ===== -->
+
+        <!-- CloudWatch alarms (monitoring hub, not part of primary event flow) -->
+        <mxCell id="cw_alarms" value="CloudWatch alarms" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F54749;gradientDirection=north;fillColor=#BC1356;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudwatch_alarm;" vertex="1" parent="1">
+          <mxGeometry x="950" y="640" width="78" height="78" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Primary flow edges ===== -->
+
+        <mxCell id="e1" value="Upload incoming/*.json" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;" edge="1" parent="1" source="producer" target="s3_bucket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e2" value="Object Created" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;" edge="1" parent="1" source="s3_bucket" target="eventbridge">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e3" value="Matched event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;strokeColor=#232F3E;fontColor=#232F3E;" edge="1" parent="1" source="eventbridge" target="sqs_queue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e4" value="Batch of messages" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;" edge="1" parent="1" source="sqs_queue" target="lambda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e5" value="Conditional PutItem" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;" edge="1" parent="1" source="lambda" target="dynamodb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Branch edges ===== -->
+
+        <!-- Lambda retrieves the object it was notified about; routed above the main row to avoid crossing the primary flow -->
+        <mxCell id="e6" value="GetObject" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="lambda" target="s3_bucket">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1119" y="140" />
+              <mxPoint x="339" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;" edge="1" parent="1" source="lambda" target="cw_logs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e8" value="After 5 failed receives" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;" edge="1" parent="1" source="sqs_queue" target="sqs_dlq">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Monitoring edges (dashed, visually distinct from the primary event/data flow) ===== -->
+
+        <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=open;dashed=1;strokeColor=#7B7B7B;fontColor=#7B7B7B;" edge="1" parent="1" source="lambda" target="cw_alarms">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=open;dashed=1;strokeColor=#7B7B7B;fontColor=#7B7B7B;" edge="1" parent="1" source="sqs_queue" target="cw_alarms">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=open;dashed=1;strokeColor=#7B7B7B;fontColor=#7B7B7B;" edge="1" parent="1" source="sqs_dlq" target="cw_alarms">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
