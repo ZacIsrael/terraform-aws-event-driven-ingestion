@@ -1,0 +1,10 @@
+{
+  "event_id": "evt-20260914-0001",
+  "event_type": "customer.created",
+  "occurred_at": "2026-09-14T12:00:00Z",
+  "source": "crm-system",
+  "payload": {
+    "customer_id": "cust-12345",
+    "status": "active"
+  }
+}
