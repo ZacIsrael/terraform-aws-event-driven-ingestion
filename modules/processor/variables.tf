@@ -30,3 +30,10 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
+
+# Name of the S3 ingestion bucket managed by the storage module.
+# Used by EventBridge to restrict processing to objects from that bucket.
+variable "s3_bucket_name" {
+  description = "Name of the S3 ingestion bucket monitored by EventBridge."
+  type        = string
+}
