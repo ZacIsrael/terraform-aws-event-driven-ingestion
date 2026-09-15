@@ -37,3 +37,33 @@ variable "s3_bucket_name" {
   description = "Name of the S3 ingestion bucket monitored by EventBridge."
   type        = string
 }
+
+
+# Name assigned to the Lambda function that processes ingestion events
+# received from the SQS ingestion queue.
+variable "lambda_name" {
+  description = "Name of the Lambda function that processes ingestion events."
+  type        = string
+}
+
+# Maximum amount of time the process-event Lambda is allowed to run
+# before AWS Lambda terminates the invocation.
+variable "lambda_timeout_seconds" {
+  description = "Maximum execution time in seconds for the process-event Lambda function."
+  type        = number
+}
+
+# Maximum number of SQS messages that Lambda can receive in a single
+# invocation from the ingestion queue.
+variable "lambda_batch_size" {
+  description = "Maximum number of SQS messages processed by the process-event Lambda in a single batch."
+  type        = number
+}
+
+# Name of the DynamoDB table managed by the storage module.
+# The process-event Lambda uses this table to persist processed events
+# and enforce idempotent writes.
+variable "dynamodb_table_name" {
+  description = "Name of the DynamoDB table used by the process-event Lambda to store processed events."
+  type        = string
+}
