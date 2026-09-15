@@ -81,3 +81,10 @@ variable "dynamodb_table_arn" {
   description = "ARN of the DynamoDB table accessed by the process-event Lambda."
   type        = string
 }
+
+# Number of days that process-event Lambda logs are retained in CloudWatch Logs.
+# Explicit retention prevents application logs from being stored indefinitely.
+variable "log_retention_days" {
+  description = "Number of days to retain process-event Lambda logs in CloudWatch Logs."
+  type        = number
+}
