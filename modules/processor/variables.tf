@@ -67,3 +67,17 @@ variable "dynamodb_table_name" {
   description = "Name of the DynamoDB table used by the process-event Lambda to store processed events."
   type        = string
 }
+
+# ARN of the S3 ingestion bucket managed by the storage module.
+# Used to scope the process-event Lambda's GetObject permission.
+variable "s3_bucket_arn" {
+  description = "ARN of the S3 ingestion bucket accessed by the process-event Lambda."
+  type        = string
+}
+
+# ARN of the DynamoDB table managed by the storage module.
+# Used to scope the process-event Lambda's write permission.
+variable "dynamodb_table_arn" {
+  description = "ARN of the DynamoDB table accessed by the process-event Lambda."
+  type        = string
+}
