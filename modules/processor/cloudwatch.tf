@@ -96,3 +96,44 @@ resource "aws_cloudwatch_metric_alarm" "ingestion_dlq_messages" {
     }
   )
 }
+
+
+
+# Alarm that detects when messages remain in the ingestion queue for too long.
+# Helps identify a growing or stalled processing backlog.
+resource "aws_cloudwatch_metric_alarm" "sqs_oldest_message_age" {
+  alarm_name        = "${var.environment}-ingestion-oldest-message-age"
+  alarm_description = "Triggers when the oldest message in the ingestion queue exceeds the configured age threshold."
+
+  # Enter the ALARM state when the oldest message exceeds the threshold.
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+
+  # Monitor the age, in seconds, of the oldest message in the ingestion queue.
+  namespace   = "AWS/SQS"
+  metric_name = "ApproximateAgeOfOldestMessage"
+  statistic   = "Maximum"
+
+  # Evaluate the oldest message age over one-minute periods.
+  period = 60
+
+  # Trigger when the oldest message has remained in the queue for over 5 minutes.
+  threshold = 300
+
+  # Treat periods without metric data as healthy rather than triggering the alarm.
+  treat_missing_data = "notBreaching"
+
+  # Restrict the metric to this processor module's primary ingestion queue.
+  dimensions = {
+    QueueName = aws_sqs_queue.ingestion.name
+  }
+
+  # Combine shared tags with resource-specific metadata.
+  tags = merge(
+    var.common_tags,
+    {
+      Name        = "${var.environment}-ingestion-oldest-message-age"
+      Environment = var.environment
+    }
+  )
+}
