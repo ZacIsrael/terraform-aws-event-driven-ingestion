@@ -3,39 +3,39 @@ import type {
   SQSBatchResponse,
   SQSBatchItemFailure,
 } from "aws-lambda";
-import type SQSRecord = require("aws-lambda");
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 
 export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
-  // Debugging
+  // Log the incoming SQS event for debugging.
   console.log("event = ", event);
 
-  // Array that keeps track of items that failed to be processed
+  // Track SQS messages that fail processing so only those messages are retried.
   const batchItemFailures: SQSBatchItemFailure[] = [];
 
-  //   Null check: see if Records array even exists
+  // Return an empty failure list if the event contains no Records array.
   if (!event.Records) {
     return {
       batchItemFailures,
     };
   }
 
-  // Records array exists
+  // Retrieve the SQS messages from the incoming event.
   let sqsMessages = await event.Records;
 
   for (let i = 0; i < sqsMessages.length; i++) {
     const message = sqsMessages[i]!;
-    // parse message body
-    // note to self: refer to docs/schema directory to see structure
 
-    // Read EventBridge event that describes what happened in S3
+    // Parse the SQS message body.
+    // Note to self: Refer to the docs/schema directory to review the expected structure.
+
+    // Parse the EventBridge event describing what happened in S3.
     // https://docs.aws.amazon.com/en_br/AmazonS3/latest/userguide/ev-events.html?
     const eventBridgeEvent = JSON.parse(message.body)!;
 
-    // check if eventBridgeEvent.detail is an obeject
+    // Verify that the EventBridge event contains a valid detail object.
     if (
       typeof eventBridgeEvent.detail !== "object" ||
       eventBridgeEvent.detail === null
@@ -46,14 +46,15 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       continue;
     }
 
-    // destruct object
+    // Extract the S3 bucket and object metadata from the EventBridge event.
     const { bucket, object } = eventBridgeEvent.detail;
 
-    // name of the bucket where this event happened
+    // Retrieve the name of the S3 bucket where the event occurred.
     let bucketName = bucket.name;
-    // if bucket name doesn't exist that's an error.
+
+    // Treat a missing bucket name as a processing failure.
     if (!bucketName) {
-      // Add record to the batchItemFailures array
+      // Add the failed SQS message to the partial-batch failure response.
       console.error("Missing bucket name in eventBridgeEvent.detail.bucket");
       batchItemFailures.push({
         itemIdentifier: message.messageId,
@@ -61,7 +62,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       continue;
     }
 
-    // Obviously, bucketName must be of type string
+    // Verify that the S3 bucket name is a string.
     if (typeof bucketName !== "string") {
       batchItemFailures.push({
         itemIdentifier: message.messageId,
@@ -69,11 +70,12 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       continue;
     }
 
-    // name of the key in the bucket
+    // Retrieve the S3 object key from the EventBridge event.
     let objectKey = object.key;
-    // if object doesn't exist that's an error.
+
+    // Treat a missing object key as a processing failure.
     if (!objectKey) {
-      // Add record to the batchItemFailures array
+      // Add the failed SQS message to the partial-batch failure response.
       console.error("Missing object key in eventBridgeEvent.detail.object");
       batchItemFailures.push({
         itemIdentifier: message.messageId,
@@ -81,26 +83,26 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       continue;
     }
 
-    // Obviously, the key needs to be a string
+    // Verify that the S3 object key is a string.
     if (typeof objectKey !== "string") {
-      // Add record to the batchItemFailures array
+      // Add the failed SQS message to the partial-batch failure response.
       batchItemFailures.push({
         itemIdentifier: message.messageId,
       });
       continue;
     }
 
-    // Decode key in case it contains spaces or special characters
+    // Decode the S3 object key in case it contains spaces or special characters.
     objectKey = decodeURIComponent(objectKey.replace(/\+/g, " "));
 
-    // Initialize S3 client
+    // Initialize the S3 client used to retrieve the event object.
     const s3Client = new S3Client({});
 
-    // Needed later to see if the object is greater than 64 KB
+    // Define the maximum allowed S3 event object size: 64 KiB (65,536 bytes).
     const MAX_OBJECT_SIZE_BYTES = 64 * 1024;
 
     try {
-      // Get the object from S3
+      // Create the command used to retrieve the event object from S3.
       const getObjectCommand = new GetObjectCommand({
         Bucket: bucketName,
         Key: objectKey,
@@ -108,48 +110,53 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
 
       const response = await s3Client.send(getObjectCommand);
 
-      // Check if object is greater than 64 KB
+      // Reject S3 objects that exceed the 64 KiB event-size limit.
       if (
         response.ContentLength &&
         response.ContentLength > MAX_OBJECT_SIZE_BYTES
       ) {
-        // Add record to the batchItemFailures array
+        // Add the failed SQS message to the partial-batch failure response.
         batchItemFailures.push({
           itemIdentifier: message.messageId,
         });
         continue;
       }
 
+      // Ensure that S3 returned an object body before attempting to process it.
       if (!response.Body) {
         console.error(
           `Missing object body for ${objectKey} in bucket ${bucketName}`
         );
-        // Add record to the batchItemFailures array
+
+        // Add the failed SQS message to the partial-batch failure response.
         batchItemFailures.push({
           itemIdentifier: message.messageId,
         });
         continue;
       }
-      // Read object body
+
+      // Retrieve the S3 object body.
       let s3ObjectBody = response.Body;
+
       if (s3ObjectBody) {
-        // Stream object's data (converts it to a readable string)
+        // Convert the streaming S3 object body into a readable string.
         const objectData = await response.Body.transformToString();
 
+        // Parse the S3 object's JSON content into a JavaScript value.
         const parsedObject = JSON.parse(objectData);
 
-        // Destruct parseObject with required fields
-        // note to self: refer to docs/schema directory to see expected structure
+        // Extract the required fields defined by the event contract.
+        // Note to self: Refer to the docs/schema directory to review the expected structure.
         // "required": ["event_id", "event_type", "occurred_at", "source", "payload"],
         const { event_id, event_type, occurred_at, source, payload } =
           parsedObject;
 
         // Event types must follow the project's dot-separated naming convention.
-        // Examples: "customer.created", "order.completed", "user_profile.updated-v2"
+        // Examples: "customer.created", "order.completed", "user_profile.updated-v2".
         const EVENT_TYPE_PATTERN =
           /^[a-z0-9]+(?:[._-][a-z0-9]+)*\.[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 
-        // Validate that all required event fields exist and have the expected types.
+        // Verify that all required event fields exist and have the expected types.
         if (
           typeof event_id !== "string" ||
           typeof event_type !== "string" ||
@@ -163,6 +170,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
             `${objectKey} in bucket ${bucketName} contains missing or incorrectly typed required fields: event_id, event_type, occurred_at, source, payload`
           );
 
+          // Add the failed SQS message to the partial-batch failure response.
           batchItemFailures.push({
             itemIdentifier: message.messageId,
           });
@@ -170,10 +178,11 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
           continue;
         }
 
-        // event_id must contain between 1 and 128 characters.
+        // Verify that event_id contains between 1 and 128 characters.
         if (event_id.length < 1 || event_id.length > 128) {
           console.error("event_id must be between 1 and 128 characters");
 
+          // Add the failed SQS message to the partial-batch failure response.
           batchItemFailures.push({
             itemIdentifier: message.messageId,
           });
@@ -181,13 +190,14 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
           continue;
         }
 
-        // event_type must be nonempty and conform to the event naming convention
-        // defined by the event contract.
+        // Verify that event_type is nonempty and follows the event naming
+        // convention defined by the event contract.
         if (event_type.length < 1 || !EVENT_TYPE_PATTERN.test(event_type)) {
           console.error(
             "event_type must follow the required dot-separated naming convention"
           );
 
+          // Add the failed SQS message to the partial-batch failure response.
           batchItemFailures.push({
             itemIdentifier: message.messageId,
           });
@@ -195,10 +205,11 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
           continue;
         }
 
-        // source must contain at least one character.
+        // Verify that source contains at least one character.
         if (source.length < 1) {
           console.error("source must be at least 1 character");
 
+          // Add the failed SQS message to the partial-batch failure response.
           batchItemFailures.push({
             itemIdentifier: message.messageId,
           });
@@ -206,7 +217,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
           continue;
         }
 
-        // occurred_at must be a valid RFC 3339 date-time string.
+        // Verify that occurred_at represents a valid date-time.
         // Examples:
         // 2026-09-16T17:30:00Z
         // 2026-09-16T13:30:00-04:00
@@ -215,6 +226,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         if (occurred_at.length < 1 || Number.isNaN(occurredAtDate.getTime())) {
           console.error("occurred_at must be a valid date-time");
 
+          // Add the failed SQS message to the partial-batch failure response.
           batchItemFailures.push({
             itemIdentifier: message.messageId,
           });
@@ -222,28 +234,25 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
           continue;
         }
 
-        // DynamoDB conditional PutItem
-
-        // Retrieve the DynamoDB table name supplied by the Lambda environment configuration.
+        // Retrieve the DynamoDB table name supplied through the Lambda environment.
         const dynamodbTableName = process.env.DYNAMODB_TABLE_NAME;
 
-        // Fail if the Lambda was deployed without its required DynamoDB table configuration.
+        // Fail processing if the required DynamoDB table configuration is missing.
         if (dynamodbTableName === undefined) {
           throw new Error(
             "DYNAMODB_TABLE_NAME environment variable is not configured."
           );
         }
 
-        // Check if event already exists in the DynamoDB table. If not, then add it
-
-        // Create the low-level AWS SDK client used to communicate with DynamoDB.
+        // Initialize the low-level AWS SDK client used to communicate with DynamoDB.
         const dynamodbClient = new DynamoDBClient({});
 
-        // Wrap the base client so DynamoDB items use normal JavaScript values.
+        // Wrap the low-level client with the DynamoDB document client so items
+        // can be read and written using standard JavaScript values.
         const dynamodbDocumentClient =
           DynamoDBDocumentClient.from(dynamodbClient);
 
-        // Event does not exist in DynamoDB, so add it
+        // Create the conditional write used to persist the processed event.
         const putEventCommand = new PutCommand({
           TableName: dynamodbTableName,
           Item: {
@@ -254,15 +263,15 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
             payload,
           },
 
-          // Prevent an existing event from being overwritten.
+          // Prevent an existing event with the same event_id from being overwritten.
           ConditionExpression: "attribute_not_exists(event_id)",
         });
 
         try {
-          // Attempt to persist the event record in DynamoDB.
+          // Attempt to persist the processed event in DynamoDB.
           await dynamodbDocumentClient.send(putEventCommand);
         } catch (error) {
-          // A failed condition means the event_id already exists.
+          // A failed conditional check means the event_id already exists.
           // Treat duplicate delivery as a successful no-op rather than an SQS failure.
           if (
             error instanceof Error &&
@@ -275,7 +284,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
             continue;
           }
 
-          // Any other DynamoDB error represents an actual processing failure.
+          // Treat any other DynamoDB error as an actual processing failure.
           console.error(
             `Failed to persist event ${event_id} to DynamoDB:`,
             error
@@ -291,10 +300,12 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         console.warn(`object ${objectKey} from bucket ${bucketName} is empty`);
       }
     } catch (error) {
+      // Treat unexpected S3 or processing errors as failures for this SQS message.
       console.error(
-        `Error getting object ${objectKey} from bucket ${bucketName}:`,
+        `Error processing object ${objectKey} from bucket ${bucketName}:`,
         error
       );
+
       batchItemFailures.push({
         itemIdentifier: message.messageId,
       });
@@ -303,6 +314,8 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
     }
   }
 
+  // Return only the SQS message identifiers that failed processing so Lambda
+  // can retry those records without retrying successfully processed messages.
   return {
     batchItemFailures,
   };
