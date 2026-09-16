@@ -48,7 +48,7 @@ resource "aws_lambda_function" "process_event" {
   # Provide storage resource identifiers required by the Lambda at runtime.
   environment {
     variables = {
-      S3_BUCKET_NAME      = var.s3_bucket_name
+      # Identify the DynamoDB table where validated events are stored.
       DYNAMODB_TABLE_NAME = var.dynamodb_table_name
     }
   }
