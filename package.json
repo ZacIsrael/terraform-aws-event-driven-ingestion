@@ -9,7 +9,8 @@
     "example": "examples"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "repository": {
     "type": "git",
@@ -21,7 +22,8 @@
   "devDependencies": {
     "@types/aws-lambda": "^8.10.163",
     "@types/node": "^22.20.3",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1133.0",
