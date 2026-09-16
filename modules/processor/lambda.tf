@@ -61,6 +61,14 @@ resource "aws_lambda_function" "process_event" {
       Environment = var.environment
     }
   )
+
+  # Configure structured CloudWatch logging for the processor Lambda.
+  logging_config {
+    log_format            = "JSON"
+    application_log_level = "INFO"
+    system_log_level      = "WARN"
+    log_group             = aws_cloudwatch_log_group.process_event.name
+  }
 }
 
 # Connects the SQS ingestion queue to the process-event Lambda function.
