@@ -97,8 +97,6 @@ resource "aws_cloudwatch_metric_alarm" "ingestion_dlq_messages" {
   )
 }
 
-
-
 # Alarm that detects when messages remain in the ingestion queue for too long.
 # Helps identify a growing or stalled processing backlog.
 resource "aws_cloudwatch_metric_alarm" "sqs_oldest_message_age" {
@@ -133,6 +131,43 @@ resource "aws_cloudwatch_metric_alarm" "sqs_oldest_message_age" {
     var.common_tags,
     {
       Name        = "${var.environment}-ingestion-oldest-message-age"
+      Environment = var.environment
+    }
+  )
+}
+
+
+# Alarm when Lambda wants to process work but AWS is throttling invocations.
+resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
+  alarm_name        = "${var.environment}-${var.lambda_name}-throttles"
+  alarm_description = "Triggers when the Lambda function experiences one or more throttled invocations."
+
+  # Enter the ALARM state when the number of throttled invocations exceeds zero.
+  comparison_operator = "GreaterThanThreshold"
+
+  # Evaluate the Lambda throttle count over a single one-minute period.
+  evaluation_periods = 1
+  period             = 60
+
+  # Monitor the native Lambda Throttles metric.
+  namespace   = "AWS/Lambda"
+  metric_name = "Throttles"
+  statistic   = "Sum"
+
+  # Enter the ALARM state when at least one Lambda invocation is throttled.
+  threshold          = 0
+  treat_missing_data = "notBreaching"
+
+  # Restrict the metric to this specific Lambda function.
+  dimensions = {
+    FunctionName = aws_lambda_function.process_event.function_name
+  }
+
+  # Combine shared tags with resource-specific metadata.
+  tags = merge(
+    var.common_tags,
+    {
+      Name        = "${var.environment}-${var.lambda_name}-throttles"
       Environment = var.environment
     }
   )
