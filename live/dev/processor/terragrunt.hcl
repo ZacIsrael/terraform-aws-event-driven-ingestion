@@ -26,6 +26,7 @@ dependency "storage" {
   # Restrict mock values to commands that do not deploy infrastructure.
   mock_outputs_allowed_terraform_commands = [
     "validate",
+    "plan",
   ]
 }
 
