@@ -5,7 +5,7 @@ data "archive_file" "process_event_code" {
 
   # Include the compiled JavaScript Lambda handler.
   source {
-    content  = file("${path.module}/../../dist/process-event/index.js")
+    content  = file("${path.module}/build/index.js")
     filename = "index.js"
   }
 
