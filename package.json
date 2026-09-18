@@ -10,7 +10,8 @@
   },
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build": "tsc && mkdir -p modules/processor/build && cp dist/process-event/index.js modules/processor/build/index.js"
   },
   "repository": {
     "type": "git",
