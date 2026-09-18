@@ -1,0 +1,10 @@
+{
+  "event_id": "validation-mixed-valid-001",
+  "event_type": "customer.created",
+  "occurred_at": "2026-09-17T23:00:00Z",
+  "source": "mixed-batch-test",
+  "payload": {
+    "customer_id": "mixed-001",
+    "name": "Mixed Batch Valid Event"
+  }
+}

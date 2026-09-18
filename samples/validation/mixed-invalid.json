@@ -1,0 +1,9 @@
+{
+  "event_id": "validation-mixed-invalid-001",
+  "event_type": "INVALID EVENT TYPE",
+  "occurred_at": "2026-09-17T23:00:00Z",
+  "source": "mixed-batch-test",
+  "payload": {
+    "customer_id": "mixed-002"
+  }
+}
